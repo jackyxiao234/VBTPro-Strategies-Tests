@@ -1,0 +1,47 @@
+import vectorbtpro as vbt
+import datetime 
+import pandas as pd
+import numpy as np
+import yfinance as yf
+
+tickers = ['NVDA', 'AAPL']
+end_date = datetime.datetime.now()
+start_date = datetime.datetime(2021, 1, 1)
+
+# Download the price data
+price_data = yf.Ticker(tickers).history(
+                                        period = '5d',
+                                        start = start_date,
+                                        end = end_date,
+                                        )
+
+# Calculate signals for rebalancing
+weights = np.array([-0.5, 0.5])  # 50% short NVDA, 50% long AAPL
+
+# Create a Portfolio
+portfolio = vbt.Portfolio.from_signals(
+    price_data,
+    entries=price_data.vbt.signals.rebalance(signal_size=weights, freq='D'),  # Rebalance daily
+    init_cash=100_000,  # Initial cash, e.g., $100,000
+    fees=0.001  # Optional: Add trading fees
+)
+
+# Run the backtest
+portfolio_returns = portfolio.total_return()
+
+# Analyze the portfolio performance
+portfolio_stats = portfolio.stats()
+
+# Display performance
+print(portfolio_stats)
+
+# Log each trade
+trades = portfolio.trades.records_readable
+for trade in trades.itertuples():
+    print(f"Trade Log - Index: {trade.Index}, Symbol: {trade.Symbol}, "
+          f"Side: {'Short' if trade.Size < 0 else 'Long'}, "
+          f"Size: {trade.Size}, Entry Price: {trade.Entry_Price}, "
+          f"Exit Price: {trade.Exit_Price}, PnL: {trade.PnL}")
+
+# Plot the portfolio value over time
+portfolio.plot().show()
